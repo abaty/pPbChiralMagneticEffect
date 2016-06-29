@@ -96,7 +96,62 @@ void makeQs(){
 
     trkCh->GetEntry(i);
     if(nTrk<s.nTrkMin || nTrk>s.nTrkMax) continue;
+
+    //trk loop for Qs
+    TComplex Q2trk_Both = TComplex(0,0);
+    TComplex Q1trk_Plus = TComplex(0,0);
+    TComplex Q1trk_Minus = TComplex(0,0);
+    double totalW_Both = 0;
+    double totalW_Plus = 0;
+    double totalW_Minus = 0;
+    for(int j = 0; j<nTrk; j++){
+      if(TMath::Abs(zVtx[0]>15)) continue;
+      if(TMath::Abs(trkEta[j])>s.trkEtaCut) continue;
+      if(trkPt[j]<s.ptMin || trkPt[j]>s.ptMax) continue;
+      if(!highPurity[j]) continue;
+      if(trkPtError[j]/trkPt[j]>0.1) continue;
+      
+      double weight = 1;
+      //Q2 for v2
+      TComplex q2 = TComplex(weight,2*trkPhi[j],true);
+      Q2trk_Both += q2;
+      totalW_Both += weight;
+      //Q1
+      if(trkCharge[j]>0){
+        TComplex q1 = TComplex(weight,1*trkPhi[j],true);
+        Q1trk_Plus += q1;
+        totalW_Plus += weight;
+      }else{
+        TComplex q1 = TComplex(weight,1*trkPhi[j],true);
+        Q1trk_Minus += q1;
+        totalW_Minus += weight;
+      }
+    }   
+    Q2trk_Both  = Q2trk_Both/totalW_Both;
+    Q1trk_Plus  = Q1trk_Plus/totalW_Plus;
+    Q1trk_Minus = Q1trk_Minus/totalW_Minus;  
+ 
+    //HF Tower loop for Qs
     towerCh->GetEntry(i);
-  }
+    TComplex Q2hf_Plus = TComplex(0,0);
+    TComplex Q2hf_Minus = TComplex(0,0);
+    double totalEt_Plus = 0;
+    double totalEt_Minus = 0;
+    for(int j = 0; j<HFn; j++){
+      if(TMath::Abs(HFeta[j])>s.HFetaMax || TMath::Abs(HFeta[j])<s.HFetaMin) continue;
+      if(HFeta[j]>0){
+        TComplex q2 = TComplex(HFEt[j],2*HFphi[j],true);
+        Q2hf_Plus += q2;
+        totalEt_Plus += HFEt[j];
+      }else{
+        TComplex q2 = TComplex(HFEt[j],2*HFphi[j],true);
+        Q2hf_Minus += q2;
+        totalEt_Minus += HFEt[j];
+      }
+    }
+    Q2hf_Plus  = Q2hf_Plus/totalEt_Plus;
+    Q2hf_Minus = Q2hf_Minus/totalEt_Minus;
   
+    std::cout << Q2trk_Both.Re() << " " << Q1trk_Plus.Re()  << " " << Q1trk_Minus.Re() << " " << Q2hf_Plus.Re() << " " << Q2hf_Minus.Re() << " " << std::endl;
+  }  
 }

@@ -9,12 +9,16 @@
 #include <vector>
 #include <cstdlib>
 
-class Settings {
+class Settings{
   public:
   int nTrkMin = 185;
   int nTrkMax = 220;
   float ptMin = 0.4;
   float ptMax = 3; 
+
+  float trkEtaCut = 2.4;
+  float HFetaMin = 4.4;
+  float HFetaMax = 5;
 
   Settings();
 };
