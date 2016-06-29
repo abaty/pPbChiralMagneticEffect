@@ -99,37 +99,58 @@ void makeQs(){
 
     //trk loop for Qs
     TComplex Q2trk_Both = TComplex(0,0);
-    TComplex Q1trk_Plus = TComplex(0,0);
-    TComplex Q1trk_Minus = TComplex(0,0);
+    TComplex Q1trk_pp = TComplex(0,0);
+    TComplex Q1trk_pm = TComplex(0,0);
+    TComplex Q1trk_mm = TComplex(0,0);
     double totalW_Both = 0;
-    double totalW_Plus = 0;
-    double totalW_Minus = 0;
+    double totalW_pp = 0;
+    double totalW_pm = 0;
+    double totalW_mm = 0;
+
+    //selection skim
+    double weight[20000] = {0};
     for(int j = 0; j<nTrk; j++){
       if(TMath::Abs(zVtx[0]>15)) continue;
       if(TMath::Abs(trkEta[j])>s.trkEtaCut) continue;
       if(trkPt[j]<s.ptMin || trkPt[j]>s.ptMax) continue;
       if(!highPurity[j]) continue;
       if(trkPtError[j]/trkPt[j]>0.1) continue;
+      weight[j]=1;
+    }
+    for(int j = 0; j<nTrk; j++){
+      if(weight[j]==0) continue;
       
-      double weight = 1;
       //Q2 for v2
-      TComplex q2 = TComplex(weight,2*trkPhi[j],true);
+      TComplex q2 = TComplex(weight[j],2*trkPhi[j],true);
       Q2trk_Both += q2;
-      totalW_Both += weight;
-      //Q1
-      if(trkCharge[j]>0){
-        TComplex q1 = TComplex(weight,1*trkPhi[j],true);
-        Q1trk_Plus += q1;
-        totalW_Plus += weight;
-      }else{
-        TComplex q1 = TComplex(weight,1*trkPhi[j],true);
-        Q1trk_Minus += q1;
-        totalW_Minus += weight;
+      totalW_Both += weight[j];
+
+      for(int jj = j+1; jj<nTrk; jj++){
+        if(weight[jj]==0) continue;
+        if(TMath::Abs(trkEta[j]-trkEta[jj])<s.trkEtaGapMin) continue;
+        if(TMath::Abs(trkEta[j]-trkEta[jj])>=s.trkEtaGapMax) continue;
+ 
+        //Q1
+        //if(trkCharge[j]>0 && trkCharge[jj]>0){
+        if(trkCharge[j]==trkCharge[jj]>0){
+          TComplex q1 = TComplex(weight[j]*weight[jj],trkPhi[j]+trkPhi[jj],true);
+          Q1trk_pp += q1;
+          totalW_pp += weight[j]*weight[jj];
+        }else if(trkCharge[j]== -trkCharge[jj]){
+          TComplex q1 = TComplex(weight[j]*weight[jj],trkPhi[j]+trkPhi[jj],true);
+          Q1trk_pm += q1;
+          totalW_pm += weight[j]*weight[jj];
+        /*}else{
+          TComplex q1 = TComplex(weight[j]*weight[jj],trkPhi[j]+trkPhi[jj],true);
+          Q1trk_mm += q1;
+          totalW_mm += weight[j]*weight[jj];*/
+        }
       }
     }   
     Q2trk_Both  = Q2trk_Both/totalW_Both;
-    Q1trk_Plus  = Q1trk_Plus/totalW_Plus;
-    Q1trk_Minus = Q1trk_Minus/totalW_Minus;  
+    Q1trk_pp  = Q1trk_pp/totalW_pp;
+    Q1trk_pm  = Q1trk_pm/totalW_pm;  
+    //Q1trk_mm  = Q1trk_mm/totalW_mm;  
  
     //HF Tower loop for Qs
     towerCh->GetEntry(i);
@@ -151,7 +172,23 @@ void makeQs(){
     }
     Q2hf_Plus  = Q2hf_Plus/totalEt_Plus;
     Q2hf_Minus = Q2hf_Minus/totalEt_Minus;
-  
-    std::cout << Q2trk_Both.Re() << " " << Q1trk_Plus.Re()  << " " << Q1trk_Minus.Re() << " " << Q2hf_Plus.Re() << " " << Q2hf_Minus.Re() << " " << std::endl;
+    
+    std::cout << Q2trk_Both.Re() << " " << Q1trk_pp.Re()  << " " << Q1trk_pm.Re() << " " << Q2hf_Plus.Re() << " " << Q2hf_Minus.Re() << " " << std::endl;
+
+    // for numerator
+    TComplex QaQbQ2c_ppPlus  = Q1trk_pp*TComplex::Conjugate(Q2hf_Plus);
+    TComplex QaQbQ2c_ppMinus = Q1trk_pp*TComplex::Conjugate(Q2hf_Minus);
+    TComplex QaQbQ2c_pmPlus  = Q1trk_pm*TComplex::Conjugate(Q2hf_Plus);
+    TComplex QaQbQ2c_pmMinus = Q1trk_pm*TComplex::Conjugate(Q2hf_Minus);
+
+    //for v2
+    TComplex QhfpQhfm = Q2hf_Plus*TComplex::Conjugate(Q2hf_Minus);
+    TComplex QhfmQhfp = Q2hf_Minus*TComplex::Conjugate(Q2hf_Plus);
+    TComplex QhfpQtrk = Q2hf_Plus*TComplex::Conjugate(Q2trk_Both);
+    TComplex QhfmQtrk = Q2hf_Minus*TComplex::Conjugate(Q2trk_Both);
+
+    //TComplex QaQbQ2c_mmPlus  = Q1trk_mm*Q2hf_Plus;
+    //TComplex QaQbQ2c_mmMinus = Q1trk_mm*Q2hf_Minus;
+ 
   }  
 }

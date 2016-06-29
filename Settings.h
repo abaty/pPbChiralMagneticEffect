@@ -20,6 +20,9 @@ class Settings{
   float HFetaMin = 4.4;
   float HFetaMax = 5;
 
+  float trkEtaGapMin = 0;
+  float trkEtaGapMax = 1;
+
   Settings();
 };
  
