@@ -20,8 +20,8 @@ class Settings{
   float HFetaMin = 4.4;
   float HFetaMax = 5;
 
-  float trkEtaGapMin = 0;
-  float trkEtaGapMax = 1;
+  static const int trkEtaGaps = 10;
+  float etaGaps[trkEtaGaps+1] = {0,0.3,0.6,0.9,1.2,1.5,1.8,2.3,2.9,3.8,4.8};
 
   Settings();
 };
