@@ -12,7 +12,7 @@
 class Settings{
   public:
   int nTrkMin = 185;
-  int nTrkMax = 220;
+  int nTrkMax = 265;
   float ptMin = 0.4;
   float ptMax = 3; 
 

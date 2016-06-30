@@ -49,7 +49,7 @@ void makeQs(){
   float HFeta[20000];
   float HFphi[20000];
  
-  TFile * input = new TFile("HiForest.root","read");
+  TFile * input = new TFile("/mnt/hadoop/cms/store/user/abaty/unmergedForests/pPb_HighMultiplicityForests_AfterBeamReversal_NoJets/store/user/abaty/unmergedForests/pPb_HighMultiplicityForests_AfterBeamReversal_NoJets/PAHighPt/crab_20160629_200757/160629_180823/0000/HiForest_11.root","read");
   TTree * trkCh = (TTree*)input->Get("ppTrack/trackTree");
   trkCh->SetBranchAddress("nTrk",&nTrk);
   trkCh->SetBranchAddress("nVtx",&nVtx);
@@ -96,6 +96,7 @@ void makeQs(){
  
   for(int i = 0; i<evtCh->GetEntries(); i++){
     evtCh->GetEntry(i);
+    if(i%1000==0) std::cout << i << "/" << evtCh->GetEntries() << std::endl;
     if(!(pVtx && pBeamScrape)) continue;
 
     hltCh->GetEntry(i);
@@ -144,7 +145,7 @@ void makeQs(){
  
           //Q1
           //if(trkCharge[j]>0 && trkCharge[jj]>0){
-          if(trkCharge[j]==trkCharge[jj]>0){
+          if(trkCharge[j]==trkCharge[jj]){
             TComplex q1 = TComplex(weight[j]*weight[jj],trkPhi[j]+trkPhi[jj],true);
             Q1trk_pp[g] += q1;
             totalW_pp[g] += weight[j]*weight[jj];
@@ -188,7 +189,7 @@ void makeQs(){
     Q2hf_Plus  = Q2hf_Plus/totalEt_Plus;
     Q2hf_Minus = Q2hf_Minus/totalEt_Minus;
     
-    std::cout << Q2trk_Both.Re() << " " << Q1trk_pp[0].Re()  << " " << Q1trk_pm[0].Re() << " " << Q2hf_Plus.Re() << " " << Q2hf_Minus.Re() << " " << std::endl;
+    //std::cout << Q2trk_Both.Re() << " " << Q1trk_pp[0].Re()  << " " << Q1trk_pm[0].Re() << " " << Q2hf_Plus.Re() << " " << Q2hf_Minus.Re() << " " << std::endl;
 
     // for numerator
     for(int g = 0; g<s.trkEtaGaps; g++){
