@@ -2,6 +2,7 @@
 #include "TComplex.h"
 #include "TCanvas.h"
 #include "TH1D.h"
+#include "TProfile.h"
 #include "TH2D.h"
 #include "TFile.h"
 #include "TTree.h"
@@ -17,6 +18,8 @@ void makePlots(){
 
   Settings s;
 
+  TProfile * avg[s.trkEtaGaps];
+
   TH1D * samePlus = new TH1D("samePlus",";#Delta #eta",s.trkEtaGaps,s.etaGaps);
   TH1D * sameMinus = new TH1D("sameMinus",";#Delta #eta",s.trkEtaGaps,s.etaGaps);
   TH1D * oppoPlus = new TH1D("oppoPlus",";#Delta #eta",s.trkEtaGaps,s.etaGaps);
@@ -27,71 +30,70 @@ void makePlots(){
   for(int g = 0; g<s.trkEtaGaps; g++) QSkim[g] = (TNtuple*) output->Get(Form("QSkim_%d",g));
 
   for(int g = 0; g<s.trkEtaGaps; g++){
-    float QaQbQ2c_ppPlus, avg_QaQbQ2c_ppPlus=0; 
-    float QaQbQ2c_ppMinus, avg_QaQbQ2c_ppMinus=0; 
-    float QaQbQ2c_pmPlus, avg_QaQbQ2c_pmPlus=0; 
-    float QaQbQ2c_pmMinus, avg_QaQbQ2c_pmMinus=0;
-    float QhfpQhfm, avg_QhfpQhfm=0;
-    float QhfmQhfp, avg_QhfmQhfp=0;
-    float QhfpQtrk, avg_QhfpQtrk=0;
-    float QhfmQtrk, avg_QhfmQtrk=0;
+    avg[g] = new TProfile(Form("avg_%d",g),";",10,0,10);
+    float QaQbQ2c_ppPlus, wQaQbQ2c_ppPlus; 
+    float QaQbQ2c_ppMinus, wQaQbQ2c_ppMinus; 
+    float QaQbQ2c_pmPlus, wQaQbQ2c_pmPlus; 
+    float QaQbQ2c_pmMinus, wQaQbQ2c_pmMinus;
+    float QhfpQhfm, wQhfpQhfm;
+    float QhfmQhfp, wQhfmQhfp;
+    float QhfpQtrk, wQhfpQtrk;
+    float QhfmQtrk, wQhfmQtrk;
     QSkim[g]->SetBranchAddress("QaQbQ2c_ppPlus",&QaQbQ2c_ppPlus);
     QSkim[g]->SetBranchAddress("QaQbQ2c_ppMinus",&QaQbQ2c_ppMinus);
     QSkim[g]->SetBranchAddress("QaQbQ2c_pmPlus",&QaQbQ2c_pmPlus);
     QSkim[g]->SetBranchAddress("QaQbQ2c_pmMinus",&QaQbQ2c_pmMinus);
+    QSkim[g]->SetBranchAddress("wQaQbQ2c_ppPlus",&wQaQbQ2c_ppPlus);
+    QSkim[g]->SetBranchAddress("wQaQbQ2c_ppMinus",&wQaQbQ2c_ppMinus);
+    QSkim[g]->SetBranchAddress("wQaQbQ2c_pmPlus",&wQaQbQ2c_pmPlus);
+    QSkim[g]->SetBranchAddress("wQaQbQ2c_pmMinus",&wQaQbQ2c_pmMinus);
     
     QSkim[g]->SetBranchAddress("QhfpQhfm",&QhfpQhfm);
     QSkim[g]->SetBranchAddress("QhfmQhfp",&QhfmQhfp);
     QSkim[g]->SetBranchAddress("QhfpQtrk",&QhfpQtrk);
     QSkim[g]->SetBranchAddress("QhfmQtrk",&QhfmQtrk);
+    QSkim[g]->SetBranchAddress("wQhfpQhfm",&wQhfpQhfm);
+    QSkim[g]->SetBranchAddress("wQhfmQhfp",&wQhfmQhfp);
+    QSkim[g]->SetBranchAddress("wQhfpQtrk",&wQhfpQtrk);
+    QSkim[g]->SetBranchAddress("wQhfmQtrk",&wQhfmQtrk);
 
-    float n = 0;
     for(int i = 0; i<QSkim[g]->GetEntries(); i++){
       QSkim[g]->GetEntry(i);
-      avg_QaQbQ2c_ppPlus +=QaQbQ2c_ppPlus; 
-      avg_QaQbQ2c_ppMinus+=QaQbQ2c_ppMinus; 
-      avg_QaQbQ2c_pmPlus +=QaQbQ2c_pmPlus; 
-      avg_QaQbQ2c_pmMinus+=QaQbQ2c_pmMinus;
+      avg[g]->Fill(1,QaQbQ2c_ppPlus,wQaQbQ2c_ppPlus);
+      avg[g]->Fill(2,QaQbQ2c_ppMinus,wQaQbQ2c_ppMinus);
+      avg[g]->Fill(3,QaQbQ2c_pmPlus,wQaQbQ2c_pmPlus);
+      avg[g]->Fill(4,QaQbQ2c_pmMinus,wQaQbQ2c_pmMinus);
 
-      avg_QhfpQhfm+=QhfpQhfm;
-      avg_QhfmQhfp+=QhfmQhfp;
-      avg_QhfpQtrk+=QhfpQtrk;
-      avg_QhfmQtrk+=QhfmQtrk; 
-      n++;
+      avg[g]->Fill(5,QhfpQhfm,wQhfpQhfm);
+      avg[g]->Fill(6,QhfmQhfp,wQhfmQhfp);
+      avg[g]->Fill(7,QhfpQtrk,wQhfpQtrk);
+      avg[g]->Fill(8,QhfmQtrk,wQhfmQtrk);
     }
-    avg_QaQbQ2c_ppPlus = avg_QaQbQ2c_ppPlus/n;
-    avg_QaQbQ2c_ppMinus = avg_QaQbQ2c_ppMinus/n;
-    avg_QaQbQ2c_pmPlus = avg_QaQbQ2c_pmPlus/n;
-    avg_QaQbQ2c_pmMinus = avg_QaQbQ2c_pmMinus/n;
-
-    avg_QhfpQhfm = avg_QhfpQhfm/n;
-    avg_QhfmQhfp = avg_QhfmQhfp/n;
-    avg_QhfpQtrk = avg_QhfpQtrk/n;
-    avg_QhfmQtrk = avg_QhfmQtrk/n;
-
-    float v2p = TMath::Power(avg_QhfpQhfm*avg_QhfpQtrk/avg_QhfmQtrk,0.5);
-    float v2m = TMath::Power(avg_QhfmQhfp*avg_QhfmQtrk/avg_QhfpQtrk,0.5);
-   
+    std::cout << avg[g]->GetBinContent(5) << " " << avg[g]->GetBinContent(6)<< " " << avg[g]->GetBinContent(7) << " " << avg[g]->GetBinContent(8) << std::endl;
+    float v2p = TMath::Power(avg[g]->GetBinContent(5)*avg[g]->GetBinContent(7)/avg[g]->GetBinContent(8),0.5);
+    float v2m = TMath::Power(avg[g]->GetBinContent(6)*avg[g]->GetBinContent(8)/avg[g]->GetBinContent(7),0.5);
+  
+    avg[g]->Print("All"); 
     std::cout << v2p << " " << v2m << std::endl;
  
-    samePlus->SetBinContent(g+1,avg_QaQbQ2c_ppPlus/v2p);
-    sameMinus->SetBinContent(g+1,avg_QaQbQ2c_ppPlus/v2m);
-    oppoPlus->SetBinContent(g+1,avg_QaQbQ2c_pmPlus/v2p);
-    oppoMinus->SetBinContent(g+1,avg_QaQbQ2c_pmPlus/v2m);
+    samePlus->SetBinContent(g+1,avg[g]->GetBinContent(1)/v2p);
+    sameMinus->SetBinContent(g+1,avg[g]->GetBinContent(2)/v2m);
+    oppoPlus->SetBinContent(g+1,avg[g]->GetBinContent(3)/v2p);
+    oppoMinus->SetBinContent(g+1,avg[g]->GetBinContent(4)/v2m);
   }
   samePlus->Print("All");
   sameMinus->Print("All");
   oppoPlus->Print("All");
   oppoMinus->Print("All");
   TCanvas * c1 = new TCanvas("C1","C1");
-  samePlus->Draw("p");
   sameMinus->SetMarkerStyle(24);
-  sameMinus->Draw("same p");
-  oppoPlus->SetMarkerColor(kRed);
-  oppoPlus->Draw("same p");
+  sameMinus->Draw("p");
+  samePlus->Draw("same p");
   oppoMinus->SetMarkerColor(kRed);
   oppoMinus->SetMarkerStyle(24);
   oppoMinus->Draw("same p");
+  oppoPlus->SetMarkerColor(kRed);
+  oppoPlus->Draw("same p");
   c1->SaveAs("CME.png");
   c1->SaveAs("CME.pdf");
 }

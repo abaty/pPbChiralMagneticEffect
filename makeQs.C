@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-void makeQs(){
+void makeQs(std::vector<std::string> inputFiles, int job){
   TH1D::SetDefaultSumw2();
   TH2D::SetDefaultSumw2();
 
@@ -48,8 +48,12 @@ void makeQs(){
   float HFEt[20000];
   float HFeta[20000];
   float HFphi[20000];
- 
-  TFile * input = new TFile("/mnt/hadoop/cms/store/user/abaty/unmergedForests/pPb_HighMultiplicityForests_AfterBeamReversal_NoJets/store/user/abaty/unmergedForests/pPb_HighMultiplicityForests_AfterBeamReversal_NoJets/PAHighPt/crab_20160629_200757/160629_180823/0000/HiForest_11.root","read");
+
+  TFile * input, * output;
+  TNtuple * QSkim[s.trkEtaGaps];
+  for(int f = 0; f<inputFiles.size(); f++){ 
+  input = TFile::Open(inputFiles.at(f).c_str(),"read");
+
   TTree * trkCh = (TTree*)input->Get("ppTrack/trackTree");
   trkCh->SetBranchAddress("nTrk",&nTrk);
   trkCh->SetBranchAddress("nVtx",&nVtx);
@@ -88,10 +92,9 @@ void makeQs(){
   towerCh->SetBranchAddress("eta",&HFeta);
   towerCh->SetBranchAddress("phi",&HFphi);
 
-  TFile * output = TFile::Open("output.root","recreate");
+  output = TFile::Open(Form("pPbCME_output_%d.root",job),"recreate");
   std::string QSkimVars;
-  QSkimVars=   "QaQbQ2c_ppPlus:QaQbQ2c_ppMinus:QaQbQ2c_pmPlus:QaQbQ2c_pmMinus:QhfpQhfm:QhfmQhfp:QhfpQtrk:QhfmQtrk";
-  TNtuple * QSkim[s.trkEtaGaps];
+  QSkimVars=   "QaQbQ2c_ppPlus:QaQbQ2c_ppMinus:QaQbQ2c_pmPlus:QaQbQ2c_pmMinus:QhfpQhfm:QhfmQhfp:QhfpQtrk:QhfmQtrk:wQaQbQ2c_ppPlus:wQaQbQ2c_ppMinus:wQaQbQ2c_pmPlus:wQaQbQ2c_pmMinus:wQhfpQhfm:wQhfmQhfp:wQhfpQtrk:wQhfmQtrk";
   for(int g = 0; g<s.trkEtaGaps; g++) QSkim[g]  = new TNtuple(Form("QSkim_%d",g),"",QSkimVars.data()); 
  
   for(int i = 0; i<evtCh->GetEntries(); i++){
@@ -204,11 +207,51 @@ void makeQs(){
       TComplex QhfpQtrk = Q2hf_Plus*TComplex::Conjugate(Q2trk_Both);
       TComplex QhfmQtrk = Q2hf_Minus*TComplex::Conjugate(Q2trk_Both);
 
-      float skimEntry[] = {(float)QaQbQ2c_ppPlus.Re(),(float)QaQbQ2c_ppMinus.Re(),(float)QaQbQ2c_pmPlus.Re(),(float)QaQbQ2c_pmMinus.Re(),(float)QhfpQhfm.Re(),(float)QhfmQhfp.Re(),(float)QhfpQtrk.Re(),(float)QhfmQtrk.Re()};
+      float skimEntry[] = {(float)QaQbQ2c_ppPlus.Re(),(float)QaQbQ2c_ppMinus.Re(),(float)QaQbQ2c_pmPlus.Re(),(float)QaQbQ2c_pmMinus.Re(),(float)QhfpQhfm.Re(),(float)QhfmQhfp.Re(),(float)QhfpQtrk.Re(),(float)QhfmQtrk.Re(),(float)(totalW_pp[g]*totalEt_Plus),(float)(totalW_pp[g]*totalEt_Minus),(float)(totalW_pm[g]*totalEt_Plus),(float)(totalW_pm[g]*totalEt_Minus),(float)(totalEt_Plus*totalEt_Minus),(float)(totalEt_Minus*totalEt_Plus),(float)(totalEt_Plus*totalW_Both),(float)(totalEt_Minus*totalW_Both)};
       QSkim[g]->Fill(skimEntry);
      }
-  }
+  }//close evt loop
+    input->Close();  
+  }//close file loop
   for(int g = 0; g<s.trkEtaGaps; g++) QSkim[g]->Write();
   output->Close();
-  input->Close();  
 }
+
+//***************************************************************************************************************
+
+int main(int argc, const char* argv[])
+{
+  if(argc != 4)
+  {
+    std::cout << "Usage: countTracks <fileList>  <job>" << std::endl;
+    return 1;
+  }  
+
+  std::string fList = argv[1];
+  int job = std::atoi(argv[2]);
+  int totalJobs = std::atoi(argv[3]);
+  std::string buffer;
+  std::vector<std::string> listOfFiles;
+  std::ifstream inFile(fList.data());
+
+  if(!inFile.is_open())
+  {
+    std::cout << "Error opening jet file. Exiting." <<std::endl;
+    return 1;
+  }
+  else
+  {
+    int line = 0;
+    while(true)
+    {
+      inFile >> buffer;
+      if(inFile.eof()) break;
+      if(line%totalJobs==job) listOfFiles.push_back(buffer);
+      line++;
+    }
+  }
+   
+  makeQs(listOfFiles,job);
+  return 0; 
+}
+
