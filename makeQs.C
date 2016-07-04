@@ -14,6 +14,11 @@ void makeQs(std::vector<std::string> inputFiles, int job){
   TH1D::SetDefaultSumw2();
   TH2D::SetDefaultSumw2();
 
+  TFile * f = TFile::Open("EPOS_eff.root","Read");
+  TH2D * trkCorr = (TH2D*)f->Get("recoHist");
+  trkCorr->SetDirectory(0);
+  f->Close();
+
   Settings s;
 
   int nTrk;
@@ -106,7 +111,7 @@ void makeQs(std::vector<std::string> inputFiles, int job){
     if(!(mult100 || mult130 || mult160 || mult190)) continue;
 
     trkCh->GetEntry(i);
-    if(nTrk<s.nTrkMin || nTrk>s.nTrkMax) continue;
+    if(nVtx!=1) continue;
 
     //trk loop for Qs
     TComplex Q2trk_Both = TComplex(0,0);
@@ -123,15 +128,23 @@ void makeQs(std::vector<std::string> inputFiles, int job){
       Q1trk_mm[g] = TComplex(0,0); 
     }
     //selection skim
+    double trkOffline = 0;
     double weight[20000] = {0};
     for(int j = 0; j<nTrk; j++){
-      if(TMath::Abs(zVtx[0]>15)) continue;
+      if(TMath::Abs(zVtx[0])>15) continue;
       if(TMath::Abs(trkEta[j])>s.trkEtaCut) continue;
-      if(trkPt[j]<s.ptMin || trkPt[j]>s.ptMax) continue;
+      if(trkPt[j]<s.ptMin) continue;
       if(!highPurity[j]) continue;
       if(trkPtError[j]/trkPt[j]>0.1) continue;
-      weight[j]=1;
+      if(TMath::Abs(trkDz1[j]/trkDzError1[j])>3 || TMath::Abs(trkDxy1[j]/trkDxyError1[j])>3 ) continue;
+      trkOffline++;
+      if(trkPt[j]>s.ptMax) continue;
+      weight[j]=1./trkCorr->GetBinContent(trkCorr->GetXaxis()->FindBin(trkEta[j]),trkCorr->GetYaxis()->FindBin(trkPt[j]));
     }
+
+    std::cout << nTrk << " " << trkOffline << std::endl; 
+    if(trkOffline<s.nTrkMin || trkOffline>s.nTrkMax) continue;
+    
     for(int j = 0; j<nTrk; j++){
       if(weight[j]==0) continue;
       
@@ -206,6 +219,8 @@ void makeQs(std::vector<std::string> inputFiles, int job){
       TComplex QhfmQhfp = Q2hf_Minus*TComplex::Conjugate(Q2hf_Plus);
       TComplex QhfpQtrk = Q2hf_Plus*TComplex::Conjugate(Q2trk_Both);
       TComplex QhfmQtrk = Q2hf_Minus*TComplex::Conjugate(Q2trk_Both);
+
+      if(TMath::IsNaN(QaQbQ2c_ppPlus.Re()) || TMath::IsNaN(QaQbQ2c_ppMinus.Re()) || TMath::IsNaN(QaQbQ2c_pmPlus.Re()) || TMath::IsNaN(QaQbQ2c_pmMinus.Re()) || TMath::IsNaN(QhfpQhfm.Re()) || TMath::IsNaN(QhfmQhfp.Re()) || TMath::IsNaN(QhfpQtrk.Re()) || TMath::IsNaN(QhfmQtrk.Re())) continue;   
 
       float skimEntry[] = {(float)QaQbQ2c_ppPlus.Re(),(float)QaQbQ2c_ppMinus.Re(),(float)QaQbQ2c_pmPlus.Re(),(float)QaQbQ2c_pmMinus.Re(),(float)QhfpQhfm.Re(),(float)QhfmQhfp.Re(),(float)QhfpQtrk.Re(),(float)QhfmQtrk.Re(),(float)(totalW_pp[g]*totalEt_Plus),(float)(totalW_pp[g]*totalEt_Minus),(float)(totalW_pm[g]*totalEt_Plus),(float)(totalW_pm[g]*totalEt_Minus),(float)(totalEt_Plus*totalEt_Minus),(float)(totalEt_Minus*totalEt_Plus),(float)(totalEt_Plus*totalW_Both),(float)(totalEt_Minus*totalW_Both)};
       QSkim[g]->Fill(skimEntry);

@@ -25,7 +25,7 @@ void makePlots(){
   TH1D * oppoPlus = new TH1D("oppoPlus",";#Delta #eta",s.trkEtaGaps,s.etaGaps);
   TH1D * oppoMinus = new TH1D("oppoMinus",";#Delta #eta",s.trkEtaGaps,s.etaGaps);
 
-  TFile * output = TFile::Open("output.root","read");
+  TFile * output = TFile::Open("/export/d00/scratch/abaty/pPbCME_OutputTotal.root","read");
   TNtuple * QSkim[s.trkEtaGaps];
   for(int g = 0; g<s.trkEtaGaps; g++) QSkim[g] = (TNtuple*) output->Get(Form("QSkim_%d",g));
 
@@ -58,6 +58,7 @@ void makePlots(){
     QSkim[g]->SetBranchAddress("wQhfmQtrk",&wQhfmQtrk);
 
     for(int i = 0; i<QSkim[g]->GetEntries(); i++){
+    //for(int i = 0; i<50000; i++){
       QSkim[g]->GetEntry(i);
       avg[g]->Fill(1,QaQbQ2c_ppPlus,wQaQbQ2c_ppPlus);
       avg[g]->Fill(2,QaQbQ2c_ppMinus,wQaQbQ2c_ppMinus);
@@ -69,30 +70,38 @@ void makePlots(){
       avg[g]->Fill(7,QhfpQtrk,wQhfpQtrk);
       avg[g]->Fill(8,QhfmQtrk,wQhfmQtrk);
     }
-    std::cout << avg[g]->GetBinContent(5) << " " << avg[g]->GetBinContent(6)<< " " << avg[g]->GetBinContent(7) << " " << avg[g]->GetBinContent(8) << std::endl;
-    float v2p = TMath::Power(avg[g]->GetBinContent(5)*avg[g]->GetBinContent(7)/avg[g]->GetBinContent(8),0.5);
-    float v2m = TMath::Power(avg[g]->GetBinContent(6)*avg[g]->GetBinContent(8)/avg[g]->GetBinContent(7),0.5);
+    
+//have to add 1 using GenBinCOntent
+    std::cout << avg[g]->GetBinContent(5+1) << " " << avg[g]->GetBinContent(6+1)<< " " << avg[g]->GetBinContent(7+1) << " " << avg[g]->GetBinContent(8+1) << std::endl;
+    float v2p = TMath::Power(avg[g]->GetBinContent(5+1)*avg[g]->GetBinContent(7+1)/avg[g]->GetBinContent(8+1),0.5);
+    float v2m = TMath::Power(avg[g]->GetBinContent(6+1)*avg[g]->GetBinContent(8+1)/avg[g]->GetBinContent(7+1),0.5);
   
     avg[g]->Print("All"); 
     std::cout << v2p << " " << v2m << std::endl;
  
-    samePlus->SetBinContent(g+1,avg[g]->GetBinContent(1)/v2p);
-    sameMinus->SetBinContent(g+1,avg[g]->GetBinContent(2)/v2m);
-    oppoPlus->SetBinContent(g+1,avg[g]->GetBinContent(3)/v2p);
-    oppoMinus->SetBinContent(g+1,avg[g]->GetBinContent(4)/v2m);
+    samePlus->SetBinContent(g+1,avg[g]->GetBinContent(1+1)/v2p);
+    sameMinus->SetBinContent(g+1,avg[g]->GetBinContent(2+1)/v2m);
+    oppoPlus->SetBinContent(g+1,avg[g]->GetBinContent(3+1)/v2p);
+    oppoMinus->SetBinContent(g+1,avg[g]->GetBinContent(4+1)/v2m);
+    samePlus->SetBinError(g+1,avg[g]->GetBinError(1+1)/v2p);
+    sameMinus->SetBinError(g+1,avg[g]->GetBinError(2+1)/v2m);
+    oppoPlus->SetBinError(g+1,avg[g]->GetBinError(3+1)/v2p);
+    oppoMinus->SetBinError(g+1,avg[g]->GetBinError(4+1)/v2m);
   }
   samePlus->Print("All");
   sameMinus->Print("All");
   oppoPlus->Print("All");
   oppoMinus->Print("All");
   TCanvas * c1 = new TCanvas("C1","C1");
-  sameMinus->SetMarkerStyle(24);
+  sameMinus->SetMarkerColor(kRed);
   sameMinus->Draw("p");
+  samePlus->SetMarkerStyle(24);
+  samePlus->SetMarkerColor(kRed);
   samePlus->Draw("same p");
-  oppoMinus->SetMarkerColor(kRed);
-  oppoMinus->SetMarkerStyle(24);
+  oppoMinus->SetMarkerColor(kBlue);
   oppoMinus->Draw("same p");
-  oppoPlus->SetMarkerColor(kRed);
+  oppoPlus->SetMarkerStyle(24);
+  oppoPlus->SetMarkerColor(kBlue);
   oppoPlus->Draw("same p");
   c1->SaveAs("CME.png");
   c1->SaveAs("CME.pdf");
