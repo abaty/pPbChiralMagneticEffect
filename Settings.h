@@ -13,7 +13,7 @@ class Settings{
   public:
   int nTrkMin = 185;
   int nTrkMax = 220;
-  float ptMin = 0.4;
+  float ptMin = 0.3;
   float ptMax = 3; 
 
   bool  doDiscreteEta = false;

@@ -5,7 +5,7 @@ then
 fi
 
 now="pPbCME_$(date +"%Y_%m_%d__%H_%M_%S")"
-njobs=250
+njobs=300
 
 mkdir $now
 cp fileList.txt $now/fileList.txt 

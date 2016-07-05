@@ -44,12 +44,15 @@ void makeQs(std::vector<std::string> inputFiles, int job){
   float zVtx[20];
   unsigned char trkNHit[50000];
   unsigned char trkNlayer[50000];
+  int trkNPixlayer[50000];
   unsigned char trkNdof[50000];
   float trkAlgo[50000];
   unsigned char trkOriginalAlgo[50000];
   int trkCharge[50000];
 
   int mult100, mult130, mult160, mult190, mult220;
+  int mult100_v2, mult130_v2, mult160_v2, mult190_v2, mult220_v2;
+  int mult100_v1, mult130_v1, mult160_v1, mult190_v1, mult220_v1;
 
   int pVtx;
   int pBeamScrape;
@@ -80,6 +83,7 @@ void makeQs(std::vector<std::string> inputFiles, int job){
   trkCh->SetBranchAddress("trkDzError1",&trkDzError1);
   trkCh->SetBranchAddress("trkChi2",&trkChi2);
   trkCh->SetBranchAddress("trkNlayer",&trkNlayer);
+  trkCh->SetBranchAddress("trkNPixlayer",&trkNPixlayer);
   trkCh->SetBranchAddress("trkNdof",&trkNdof);
   trkCh->SetBranchAddress("trkAlgo",&trkAlgo);
   trkCh->SetBranchAddress("trkOriginalAlgo",&trkOriginalAlgo);
@@ -87,11 +91,16 @@ void makeQs(std::vector<std::string> inputFiles, int job){
   trkCh->SetBranchAddress("trkCharge",&trkCharge);
   
   TTree * hltCh = (TTree*)input->Get("hltanalysis/HltTree");
-  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity100_v2",&mult100);
-  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity130_v2",&mult130);
-  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity160_v2",&mult160);
-  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity190_v2",&mult190);
-  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity220_v2",&mult220);
+  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity100_v1",&mult100_v1);
+  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity130_v1",&mult130_v1);
+  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity160_v1",&mult160_v1);
+  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity190_v1",&mult190_v1);
+  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity220_v1",&mult220_v1);
+  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity100_v2",&mult100_v2);
+  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity130_v2",&mult130_v2);
+  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity160_v2",&mult160_v2);
+  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity190_v2",&mult190_v2);
+  hltCh->SetBranchAddress("HLT_PAPixelTracks_Multiplicity220_v2",&mult220_v2);
 
   TTree * evtCh = (TTree*)input->Get("skimanalysis/HltTree");
   evtCh->SetBranchAddress("pPAprimaryVertexFilter",&pVtx);
@@ -114,6 +123,11 @@ void makeQs(std::vector<std::string> inputFiles, int job){
     if(!(pVtx && pBeamScrape)) continue;
 
     hltCh->GetEntry(i);
+    mult100 = (mult100_v1==1) || (mult100_v2==1);
+    mult130 = (mult130_v1==1) || (mult130_v2==1);
+    mult160 = (mult160_v1==1) || (mult160_v2==1);
+    mult190 = (mult190_v1==1) || (mult190_v2==1);
+    mult220 = (mult220_v1==1) || (mult220_v2==1);
     if(!(mult100 || mult130 || mult160 || mult190)) continue;
 
     trkCh->GetEntry(i);
@@ -143,10 +157,9 @@ void makeQs(std::vector<std::string> inputFiles, int job){
       if(!highPurity[j]) continue;
       if(trkPtError[j]/trkPt[j]>0.1) continue;
       if(TMath::Abs(trkDz1[j]/trkDzError1[j])>3 || TMath::Abs(trkDxy1[j]/trkDxyError1[j])>3 ) continue;
-      trkOffline++;
+      if(trkPt[j]>0.4) trkOffline++;
 
-      //FIXME SWAP TO nPix>0 cut when available
-      if(trkAlgo[j]==9 || trkAlgo[j]==10) continue;
+      if(trkNPixlayer[j]<1) continue;
       if(trkPt[j]>s.ptMax) continue;
       
       weight[j]=1./trkCorr->GetBinContent(trkCorr->GetXaxis()->FindBin(trkEta[j]),trkCorr->GetYaxis()->FindBin(trkPt[j]));
