@@ -10,6 +10,10 @@
 #include <string>
 #include <vector>
 
+float roundEta(float eta){
+  return (int)(10*eta)/10.0+((eta>=0)?0.05:-0.05);
+}
+
 void makeQs(std::vector<std::string> inputFiles, int job){
   TH1D::SetDefaultSumw2();
   TH2D::SetDefaultSumw2();
@@ -23,6 +27,7 @@ void makeQs(std::vector<std::string> inputFiles, int job){
 
   int nTrk;
   int nVtx;
+  int nRun;
   int nTrkTimesnVtx;
   bool highPurity[50000];
   float trkPt[50000];
@@ -40,7 +45,7 @@ void makeQs(std::vector<std::string> inputFiles, int job){
   unsigned char trkNHit[50000];
   unsigned char trkNlayer[50000];
   unsigned char trkNdof[50000];
-  unsigned char trkAlgo[50000];
+  float trkAlgo[50000];
   unsigned char trkOriginalAlgo[50000];
   int trkCharge[50000];
 
@@ -62,6 +67,7 @@ void makeQs(std::vector<std::string> inputFiles, int job){
   TTree * trkCh = (TTree*)input->Get("ppTrack/trackTree");
   trkCh->SetBranchAddress("nTrk",&nTrk);
   trkCh->SetBranchAddress("nVtx",&nVtx);
+  trkCh->SetBranchAddress("nRun",&nRun);
   trkCh->SetBranchAddress("trkPt",&trkPt);
   trkCh->SetBranchAddress("trkEta",&trkEta);
   trkCh->SetBranchAddress("trkPhi",&trkPhi);
@@ -112,7 +118,8 @@ void makeQs(std::vector<std::string> inputFiles, int job){
 
     trkCh->GetEntry(i);
     if(nVtx!=1) continue;
-
+    if(TMath::Abs(zVtx[0])>15) continue;
+  
     //trk loop for Qs
     TComplex Q2trk_Both = TComplex(0,0);
     double totalW_Both = 0;
@@ -131,14 +138,17 @@ void makeQs(std::vector<std::string> inputFiles, int job){
     double trkOffline = 0;
     double weight[20000] = {0};
     for(int j = 0; j<nTrk; j++){
-      if(TMath::Abs(zVtx[0])>15) continue;
       if(TMath::Abs(trkEta[j])>s.trkEtaCut) continue;
       if(trkPt[j]<s.ptMin) continue;
       if(!highPurity[j]) continue;
       if(trkPtError[j]/trkPt[j]>0.1) continue;
       if(TMath::Abs(trkDz1[j]/trkDzError1[j])>3 || TMath::Abs(trkDxy1[j]/trkDxyError1[j])>3 ) continue;
       trkOffline++;
+
+      //FIXME SWAP TO nPix>0 cut when available
+      if(trkAlgo[j]==9 || trkAlgo[j]==10) continue;
       if(trkPt[j]>s.ptMax) continue;
+      
       weight[j]=1./trkCorr->GetBinContent(trkCorr->GetXaxis()->FindBin(trkEta[j]),trkCorr->GetYaxis()->FindBin(trkPt[j]));
     }
 
@@ -150,14 +160,16 @@ void makeQs(std::vector<std::string> inputFiles, int job){
       
       //Q2 for v2
       TComplex q2 = TComplex(weight[j],2*trkPhi[j],true);
-      Q2trk_Both += q2;
+      Q2trk_Both += q2; 
       totalW_Both += weight[j];
 
       for(int jj = j+1; jj<nTrk; jj++){
         if(weight[jj]==0) continue;
         for(int g = 0; g<s.trkEtaGaps; g++){
-          if(TMath::Abs(trkEta[j]-trkEta[jj])<s.etaGaps[g]) continue;
-          //if(TMath::Abs(trkEta[j]-trkEta[jj])>=s.etaGaps[g+1]) continue;
+          if(!s.doDiscreteEta && TMath::Abs(trkEta[j]-trkEta[jj])<s.etaGaps[g]) continue;
+          if(!s.doDiscreteEta && TMath::Abs(trkEta[j]-trkEta[jj])>=s.etaGaps[g+1]) continue;
+          if(s.doDiscreteEta && TMath::Abs(roundEta(trkEta[j])-roundEta(trkEta[jj]))<s.etaGaps[g]) continue;
+          if(s.doDiscreteEta && TMath::Abs(roundEta(trkEta[j])-roundEta(trkEta[jj]))>=s.etaGaps[g+1]) continue;
  
           //Q1
           //if(trkCharge[j]>0 && trkCharge[jj]>0){
@@ -190,9 +202,12 @@ void makeQs(std::vector<std::string> inputFiles, int job){
     TComplex Q2hf_Minus = TComplex(0,0);
     double totalEt_Plus = 0;
     double totalEt_Minus = 0;
+    int rev = 1;
+    if(nRun<=211312) rev = -1;//swapp eta for early runs (because beam was reversed)
+
     for(int j = 0; j<HFn; j++){
       if(TMath::Abs(HFeta[j])>s.HFetaMax || TMath::Abs(HFeta[j])<s.HFetaMin) continue;
-      if(HFeta[j]>0){
+      if(rev*HFeta[j]>0){
         TComplex q2 = TComplex(HFEt[j],2*HFphi[j],true);
         Q2hf_Plus += q2;
         totalEt_Plus += HFEt[j];

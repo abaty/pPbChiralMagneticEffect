@@ -16,6 +16,8 @@ class Settings{
   float ptMin = 0.4;
   float ptMax = 3; 
 
+  bool  doDiscreteEta = false;
+
   float trkEtaCut = 2.4;
   float HFetaMin = 4.4;
   float HFetaMax = 5;
