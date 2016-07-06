@@ -17,13 +17,19 @@ float roundEta(float eta){
 void makeQs(std::vector<std::string> inputFiles, int job){
   TH1D::SetDefaultSumw2();
   TH2D::SetDefaultSumw2();
+  TH1D * cutEvt = new TH1D("cutEvt","cutEvt",20,0,20);
+  
+  Settings s;
+
+  TNtuple * QSkim[s.trkEtaGaps];
+  std::string QSkimVars;
+  QSkimVars=   "QaQbQ2c_ppPlus:QaQbQ2c_ppMinus:QaQbQ2c_pmPlus:QaQbQ2c_pmMinus:QhfpQhfm:QhfmQhfp:QhfpQtrk:QhfmQtrk:wQaQbQ2c_ppPlus:wQaQbQ2c_ppMinus:wQaQbQ2c_pmPlus:wQaQbQ2c_pmMinus:wQhfpQhfm:wQhfmQhfp:wQhfpQtrk:wQhfmQtrk:posFrac:negFrac:nTrkOffline";
+  for(int g = 0; g<s.trkEtaGaps; g++){ QSkim[g]  = new TNtuple(Form("QSkim_%d",g),"",QSkimVars.data());}
 
   TFile * f = TFile::Open("EPOS_eff.root","Read");
   TH2D * trkCorr = (TH2D*)f->Get("recoHist");
   trkCorr->SetDirectory(0);
   f->Close();
-
-  Settings s;
 
   int nTrk;
   int nVtx;
@@ -61,9 +67,11 @@ void makeQs(std::vector<std::string> inputFiles, int job){
   float HFEt[20000];
   float HFeta[20000];
   float HFphi[20000];
+  int pVtxGplus = 0;
+  int phfCoinc = 0;
 
   TFile * input, * output;
-  TNtuple * QSkim[s.trkEtaGaps];
+  std::cout << inputFiles.size() << std::endl;
   for(int f = 0; f<inputFiles.size(); f++){ 
   input = TFile::Open(inputFiles.at(f).c_str(),"read");
 
@@ -105,6 +113,8 @@ void makeQs(std::vector<std::string> inputFiles, int job){
   TTree * evtCh = (TTree*)input->Get("skimanalysis/HltTree");
   evtCh->SetBranchAddress("pPAprimaryVertexFilter",&pVtx);
   evtCh->SetBranchAddress("pBeamScrapingFilter",&pBeamScrape);
+  evtCh->SetBranchAddress("pVertexFilterCutGplus",&pVtxGplus);
+  evtCh->SetBranchAddress("phfCoincFilter",&phfCoinc);
  
   TTree * towerCh = (TTree*)input->Get("rechitanalyzer/tower"); 
   towerCh->SetBranchAddress("n",&HFn);
@@ -113,14 +123,18 @@ void makeQs(std::vector<std::string> inputFiles, int job){
   towerCh->SetBranchAddress("phi",&HFphi);
 
   output = TFile::Open(Form("pPbCME_output_%d.root",job),"recreate");
+  /*
   std::string QSkimVars;
-  QSkimVars=   "QaQbQ2c_ppPlus:QaQbQ2c_ppMinus:QaQbQ2c_pmPlus:QaQbQ2c_pmMinus:QhfpQhfm:QhfmQhfp:QhfpQtrk:QhfmQtrk:wQaQbQ2c_ppPlus:wQaQbQ2c_ppMinus:wQaQbQ2c_pmPlus:wQaQbQ2c_pmMinus:wQhfpQhfm:wQhfmQhfp:wQhfpQtrk:wQhfmQtrk";
-  for(int g = 0; g<s.trkEtaGaps; g++) QSkim[g]  = new TNtuple(Form("QSkim_%d",g),"",QSkimVars.data()); 
- 
+  QSkimVars=   "QaQbQ2c_ppPlus:QaQbQ2c_ppMinus:QaQbQ2c_pmPlus:QaQbQ2c_pmMinus:QhfpQhfm:QhfmQhfp:QhfpQtrk:QhfmQtrk:wQaQbQ2c_ppPlus:wQaQbQ2c_ppMinus:wQaQbQ2c_pmPlus:wQaQbQ2c_pmMinus:wQhfpQhfm:wQhfmQhfp:wQhfpQtrk:wQhfmQtrk:posFrac:negFrac:nTrkOffline";
+  for(int g = 0; g<s.trkEtaGaps; g++){ QSkim[g]  = new TNtuple(Form("QSkim_%d",g),"",QSkimVars.data());}
+  */ 
+
   for(int i = 0; i<evtCh->GetEntries(); i++){
     evtCh->GetEntry(i);
+    cutEvt->Fill(1);
     if(i%1000==0) std::cout << i << "/" << evtCh->GetEntries() << std::endl;
-    if(!(pVtx && pBeamScrape)) continue;
+    if(!(pVtx && pBeamScrape && pVtxGplus && phfCoinc)) continue;
+    cutEvt->Fill(2);
 
     hltCh->GetEntry(i);
     mult100 = (mult100_v1==1) || (mult100_v2==1);
@@ -128,11 +142,12 @@ void makeQs(std::vector<std::string> inputFiles, int job){
     mult160 = (mult160_v1==1) || (mult160_v2==1);
     mult190 = (mult190_v1==1) || (mult190_v2==1);
     mult220 = (mult220_v1==1) || (mult220_v2==1);
-    if(!(mult100 || mult130 || mult160 || mult190)) continue;
+    if(!(mult100 || mult130 || mult160)) continue;
+    cutEvt->Fill(3);
 
     trkCh->GetEntry(i);
-    if(nVtx!=1) continue;
     if(TMath::Abs(zVtx[0])>15) continue;
+    cutEvt->Fill(4);
   
     //trk loop for Qs
     TComplex Q2trk_Both = TComplex(0,0);
@@ -151,6 +166,7 @@ void makeQs(std::vector<std::string> inputFiles, int job){
     //selection skim
     double trkOffline = 0;
     double weight[20000] = {0};
+    float totP = 0, totN = 0, tot = 0;
     for(int j = 0; j<nTrk; j++){
       if(TMath::Abs(trkEta[j])>s.trkEtaCut) continue;
       if(trkPt[j]<s.ptMin) continue;
@@ -161,12 +177,16 @@ void makeQs(std::vector<std::string> inputFiles, int job){
 
       if(trkNPixlayer[j]<1) continue;
       if(trkPt[j]>s.ptMax) continue;
-      
+
+      if(trkCharge[j]>0) totP++;
+      if(trkCharge[j]<0) totN++;
+      tot++;
       weight[j]=1./trkCorr->GetBinContent(trkCorr->GetXaxis()->FindBin(trkEta[j]),trkCorr->GetYaxis()->FindBin(trkPt[j]));
     }
 
-    std::cout << nTrk << " " << trkOffline << std::endl; 
-    if(trkOffline<s.nTrkMin || trkOffline>s.nTrkMax) continue;
+    //std::cout << nTrk << " " << trkOffline << std::endl; 
+    if(trkOffline<s.nTrkMin || trkOffline>=s.nTrkMax) continue;
+    cutEvt->Fill(5);
     
     for(int j = 0; j<nTrk; j++){
       if(weight[j]==0) continue;
@@ -236,6 +256,7 @@ void makeQs(std::vector<std::string> inputFiles, int job){
     //std::cout << Q2trk_Both.Re() << " " << Q1trk_pp[0].Re()  << " " << Q1trk_pm[0].Re() << " " << Q2hf_Plus.Re() << " " << Q2hf_Minus.Re() << " " << std::endl;
 
     // for numerator
+    cutEvt->Fill(6);
     for(int g = 0; g<s.trkEtaGaps; g++){
       TComplex QaQbQ2c_ppPlus  = Q1trk_pp[g]*TComplex::Conjugate(Q2hf_Plus);
       TComplex QaQbQ2c_ppMinus = Q1trk_pp[g]*TComplex::Conjugate(Q2hf_Minus);
@@ -248,15 +269,18 @@ void makeQs(std::vector<std::string> inputFiles, int job){
       TComplex QhfpQtrk = Q2hf_Plus*TComplex::Conjugate(Q2trk_Both);
       TComplex QhfmQtrk = Q2hf_Minus*TComplex::Conjugate(Q2trk_Both);
 
-      if(TMath::IsNaN(QaQbQ2c_ppPlus.Re()) || TMath::IsNaN(QaQbQ2c_ppMinus.Re()) || TMath::IsNaN(QaQbQ2c_pmPlus.Re()) || TMath::IsNaN(QaQbQ2c_pmMinus.Re()) || TMath::IsNaN(QhfpQhfm.Re()) || TMath::IsNaN(QhfmQhfp.Re()) || TMath::IsNaN(QhfpQtrk.Re()) || TMath::IsNaN(QhfmQtrk.Re())) continue;   
+      if(TMath::IsNaN(QaQbQ2c_ppPlus.Re()) || TMath::IsNaN(QaQbQ2c_ppMinus.Re()) || TMath::IsNaN(QaQbQ2c_pmPlus.Re()) || TMath::IsNaN(QaQbQ2c_pmMinus.Re()) || TMath::IsNaN(QhfpQhfm.Re()) || TMath::IsNaN(QhfmQhfp.Re()) || TMath::IsNaN(QhfpQtrk.Re()) || TMath::IsNaN(QhfmQtrk.Re())){std::cout << "ERROR!!! GOT NAN" << std::endl; continue;}  
+       
 
-      float skimEntry[] = {(float)QaQbQ2c_ppPlus.Re(),(float)QaQbQ2c_ppMinus.Re(),(float)QaQbQ2c_pmPlus.Re(),(float)QaQbQ2c_pmMinus.Re(),(float)QhfpQhfm.Re(),(float)QhfmQhfp.Re(),(float)QhfpQtrk.Re(),(float)QhfmQtrk.Re(),(float)(totalW_pp[g]*totalEt_Plus),(float)(totalW_pp[g]*totalEt_Minus),(float)(totalW_pm[g]*totalEt_Plus),(float)(totalW_pm[g]*totalEt_Minus),(float)(totalEt_Plus*totalEt_Minus),(float)(totalEt_Minus*totalEt_Plus),(float)(totalEt_Plus*totalW_Both),(float)(totalEt_Minus*totalW_Both)};
+      float skimEntry[] = {(float)QaQbQ2c_ppPlus.Re(),(float)QaQbQ2c_ppMinus.Re(),(float)QaQbQ2c_pmPlus.Re(),(float)QaQbQ2c_pmMinus.Re(),(float)QhfpQhfm.Re(),(float)QhfmQhfp.Re(),(float)QhfpQtrk.Re(),(float)QhfmQtrk.Re(),(float)(totalW_pp[g]*totalEt_Plus),(float)(totalW_pp[g]*totalEt_Minus),(float)(totalW_pm[g]*totalEt_Plus),(float)(totalW_pm[g]*totalEt_Minus),(float)(totalEt_Plus*totalEt_Minus),(float)(totalEt_Minus*totalEt_Plus),(float)(totalEt_Plus*totalW_Both),(float)(totalEt_Minus*totalW_Both),totP/tot,totN/tot,(float)trkOffline};
       QSkim[g]->Fill(skimEntry);
      }
+    //std::cout << QSkim[0]->GetEntries() << std::endl;
   }//close evt loop
     input->Close();  
   }//close file loop
   for(int g = 0; g<s.trkEtaGaps; g++) QSkim[g]->Write();
+  cutEvt->Write();
   output->Close();
 }
 

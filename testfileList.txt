@@ -1,2 +1,2 @@
-/mnt/hadoop/cms/store/user/abaty/unmergedForests/pPb_HighMultiplicityForests_ReRECO_July4_Reverse_v2/PAHighPt/crab_20160704_224851/160704_204908/0000/HiForest_1.root
-/mnt/hadoop/cms/store/user/abaty/unmergedForests/pPb_HighMultiplicityForests_ReRECO_July4_Reverse_v2/PAHighPt/crab_20160704_224851/160704_204908/0000/HiForest_10.root
+/mnt/hadoop/cms/store/user/abaty/unmergedForests/pPb_HighMultiplicityForests_ReRECO_July4_v2/PAHighPt/crab_20160704_224820/160704_204842/0000/HiForest_10.root
+/mnt/hadoop/cms/store/user/abaty/unmergedForests/pPb_HighMultiplicityForests_ReRECO_July4_v2/PAHighPt/crab_20160704_224820/160704_204842/0000/HiForest_100.root
