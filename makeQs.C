@@ -9,6 +9,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "TLorentzVector.h"
 
 float roundEta(float eta){
   return (int)(10*eta)/10.0+((eta>=0)?0.05:-0.05);
@@ -17,14 +18,12 @@ float roundEta(float eta){
 void makeQs(std::vector<std::string> inputFiles, int job){
   TH1D::SetDefaultSumw2();
   TH2D::SetDefaultSumw2();
-  TH1D * cutEvt = new TH1D("cutEvt","cutEvt",20,0,20);
   
   Settings s;
 
   TNtuple * QSkim[s.trkEtaGaps];
   std::string QSkimVars;
   QSkimVars=   "QaQbQ2c_ppPlus:QaQbQ2c_ppMinus:QaQbQ2c_pmPlus:QaQbQ2c_pmMinus:QhfpQhfm:QhfmQhfp:QhfpQtrk:QhfmQtrk:wQaQbQ2c_ppPlus:wQaQbQ2c_ppMinus:wQaQbQ2c_pmPlus:wQaQbQ2c_pmMinus:wQhfpQhfm:wQhfmQhfp:wQhfpQtrk:wQhfmQtrk:posFrac:negFrac:nTrkOffline";
-  for(int g = 0; g<s.trkEtaGaps; g++){ QSkim[g]  = new TNtuple(Form("QSkim_%d",g),"",QSkimVars.data());}
 
   TFile * f = TFile::Open("EPOS_eff.root","Read");
   TH2D * trkCorr = (TH2D*)f->Get("recoHist");
@@ -122,7 +121,15 @@ void makeQs(std::vector<std::string> inputFiles, int job){
   towerCh->SetBranchAddress("eta",&HFeta);
   towerCh->SetBranchAddress("phi",&HFphi);
 
-  output = TFile::Open(Form("pPbCME_output_%d.root",job),"recreate");
+  output = TFile::Open(Form("pPbCME_output__%d.root",f),"recreate");
+  TH1D * cutEvt = new TH1D("cutEvt","cutEvt",20,0,20);
+  TH1D * chPhip = new TH1D("chPhip","chPhip",360,-TMath::Pi(),TMath::Pi());
+  TH1D * chPhin = new TH1D("chPhin","chPhin",360,-TMath::Pi(),TMath::Pi());
+
+  TH1D * kshortSame = new TH1D("kshortSame","kshortSame",50,0.4,0.6);
+  TH1D * kshortOppo = new TH1D("kshortOppo","kshortOppo",50,0.4,0.6);
+  for(int g = 0; g<s.trkEtaGaps; g++){ QSkim[g]  = new TNtuple(Form("QSkim%d",g),"",QSkimVars.data());}
+
   /*
   std::string QSkimVars;
   QSkimVars=   "QaQbQ2c_ppPlus:QaQbQ2c_ppMinus:QaQbQ2c_pmPlus:QaQbQ2c_pmMinus:QhfpQhfm:QhfmQhfp:QhfpQtrk:QhfmQtrk:wQaQbQ2c_ppPlus:wQaQbQ2c_ppMinus:wQaQbQ2c_pmPlus:wQaQbQ2c_pmMinus:wQhfpQhfm:wQhfmQhfp:wQhfpQtrk:wQhfmQtrk:posFrac:negFrac:nTrkOffline";
@@ -178,10 +185,18 @@ void makeQs(std::vector<std::string> inputFiles, int job){
       if(trkNPixlayer[j]<1) continue;
       if(trkPt[j]>s.ptMax) continue;
 
-      if(trkCharge[j]>0) totP++;
-      if(trkCharge[j]<0) totN++;
+      if(trkCharge[j]>0){
+        totP++;
+        chPhip->Fill(trkPhi[j]);
+      }
+      if(trkCharge[j]<0){
+        totN++;
+        chPhin->Fill(trkPhi[j]);
+      }
       tot++;
-      weight[j]=1./trkCorr->GetBinContent(trkCorr->GetXaxis()->FindBin(trkEta[j]),trkCorr->GetYaxis()->FindBin(trkPt[j]));
+      weight[j]=1.;
+      if(s.doPlusTrkCorr==true && trkCharge[j]>0) weight[j]=1./trkCorr->GetBinContent(trkCorr->GetXaxis()->FindBin(trkEta[j]),trkCorr->GetYaxis()->FindBin(trkPt[j]));
+      if(s.doMinusTrkCorr==true && trkCharge[j]<0) weight[j]=1./trkCorr->GetBinContent(trkCorr->GetXaxis()->FindBin(trkEta[j]),trkCorr->GetYaxis()->FindBin(trkPt[j]));
     }
 
     //std::cout << nTrk << " " << trkOffline << std::endl; 
@@ -195,9 +210,26 @@ void makeQs(std::vector<std::string> inputFiles, int job){
       TComplex q2 = TComplex(weight[j],2*trkPhi[j],true);
       Q2trk_Both += q2; 
       totalW_Both += weight[j];
+        
+      TLorentzVector *pi1 = new TLorentzVector(0,0,0,0);
+      TLorentzVector *pi2 = new TLorentzVector(0,0,0,0);
+
 
       for(int jj = j+1; jj<nTrk; jj++){
         if(weight[jj]==0) continue;
+
+        if(trkCharge[j]==trkCharge[jj]){
+          pi1->SetPtEtaPhiM(trkPt[j],trkEta[j],trkPhi[j],0.13957);
+          pi2->SetPtEtaPhiM(trkPt[jj],trkEta[jj],trkPhi[jj],0.13957);
+          *pi1 = *pi1 + *pi2;
+          kshortSame->Fill(pi1->M());
+        }else{
+          pi1->SetPtEtaPhiM(trkPt[j],trkEta[j],trkPhi[j],0.13957);
+          pi2->SetPtEtaPhiM(trkPt[jj],trkEta[jj],trkPhi[jj],0.13957);
+          *pi1 = *pi1 + *pi2;
+          kshortOppo->Fill(pi1->M()); 
+        }
+
         for(int g = 0; g<s.trkEtaGaps; g++){
           if(!s.doDiscreteEta && TMath::Abs(trkEta[j]-trkEta[jj])<s.etaGaps[g]) continue;
           if(!s.doDiscreteEta && TMath::Abs(trkEta[j]-trkEta[jj])>=s.etaGaps[g+1]) continue;
@@ -221,6 +253,8 @@ void makeQs(std::vector<std::string> inputFiles, int job){
           }
         }
       }
+      delete pi1;
+      delete pi2;
     }   
     Q2trk_Both  = Q2trk_Both/totalW_Both;
     for(int g = 0; g<s.trkEtaGaps; g++){
@@ -277,11 +311,17 @@ void makeQs(std::vector<std::string> inputFiles, int job){
      }
     //std::cout << QSkim[0]->GetEntries() << std::endl;
   }//close evt loop
+    for(int g = 0; g<s.trkEtaGaps; g++){  QSkim[g]->Write();}
+    cutEvt->Write();
+    chPhip->Write();
+    chPhin->Write();
+    kshortSame->Write();
+    kshortOppo->Write();
+    output->Close();
+//    delete cutEvt;
+//    for(int g = 0; g<s.trkEtaGaps; g++){delete  QSkim[g];}
     input->Close();  
   }//close file loop
-  for(int g = 0; g<s.trkEtaGaps; g++) QSkim[g]->Write();
-  cutEvt->Write();
-  output->Close();
 }
 
 //***************************************************************************************************************
